@@ -21,8 +21,9 @@ FUNCTION_NAME=$2
 if [ -f deployment-package.zip ]; then
     rm deployment-package.zip
 fi
-zip -r deployment-package.zip .
+
+zip -r deployment-package.zip . -x ".vscode/*" -x ".git/*" -x "setup*" -x "*test*" -x "node_modules/chai/*" -x "node_modules/mocha/*" -x "node_modules/supertest/*"
 
 aws lambda create-function --function-name FUNCTION_NAME \
 --zip-file fileb://deployment-package.zip --handler lambda.handler \
---runtime nodejs14.x --role $ROLE_ARN
+--runtime nodejs14.x --role $ROLE_ARN --region $AWS_REGION
