@@ -19,11 +19,21 @@ fi
 FUNCTION_NAME=$2
 
 if [ -f deployment-package.zip ]; then
+    echo "Removing old deployment package..."
     rm deployment-package.zip
 fi
 
+echo "Creating deployment package..."
 zip -r deployment-package.zip . -x ".vscode/*" -x ".git/*" -x "setup*" -x "*test*" -x "node_modules/chai/*" -x "node_modules/mocha/*" -x "node_modules/supertest/*"
+echo "Deployment package created."
 
-aws lambda create-function --function-name FUNCTION_NAME \
+EXIST=$(aws lambda get-function --function-name $FUNCTION_NAME | grep "FunctionName" | grep $FUNCTION_NAME)
+if [ -n "$EXIST" ]; then
+    echo "Function $FUNCTION_NAME already exists. Deleting..."
+    aws lambda delete-function --function-name $FUNCTION_NAME --region $AWS_REGION
+fi
+echo "Creating function $FUNCTION_NAME..."    
+aws lambda create-function --function-name $FUNCTION_NAME \
 --zip-file fileb://deployment-package.zip --handler lambda.handler \
---runtime nodejs14.x --role $ROLE_ARN --region $AWS_REGION
+--runtime nodejs20.x --role $ROLE_ARN --region $AWS_REGION
+echo "Function $FUNCTION_NAME created."
