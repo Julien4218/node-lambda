@@ -15,11 +15,11 @@ const inventoryItems = [
     { id: "10", item: "Item_10", price: "$2.16", sku: "c4f7620640ab26dd704790341590a404330cd210", description: "Yard-a-Pult" }
 ];
 
-app.get('/api/inventory', (req, res) => {
+app.get('/inventory', (req, res) => {
     res.json(inventoryItems);
 });
 
-app.get('/api/inventory/:id', (req, res) => {
+app.get('/inventory/:id', (req, res) => {
     const itemId = req.params.id;
     const item = inventoryItems.find(i => i.id === itemId);
     if (item) {

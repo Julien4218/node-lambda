@@ -33,16 +33,16 @@ The server will be running on http://localhost:3000.
 Retrieve all items
 
 ```bash
-curl -H "Accept: application/json" http://localhost:3000/api/inventory
+curl -H "Accept: application/json" http://localhost:3000/inventory
 ```
 
 Get a single item
 
 ```bash
-curl -H "Accept: application/json" http://localhost:3000/api/inventory/3
+curl -H "Accept: application/json" http://localhost:3000/inventory/3
 ```
 
-## Deploying to AWS Lambda
+## Deploying to AWS Lambda and API Gateway
 
 ### Pre-requesite
 
@@ -50,6 +50,7 @@ Create a policy and a role. The policy JSON should be similar to the one below. 
 
 Once done, copy the role ARN.
 
+Permissions:
 ```json
 {
     "Version": "2012-10-17",
@@ -78,7 +79,30 @@ Once done, copy the role ARN.
 }    
 ```
 
-### Deploying
+Trust allowing lambda and api gateway
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "lambda.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+        },
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "apigateway.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+        }
+    ]
+}
+```
+
+### Deploying Lambda
 
 To deploy the application to AWS Lambda, follow these steps:
 
@@ -101,11 +125,35 @@ Using AWS Lambda Test with the following payload to fetch a single inventory ite
 
 ```json
 {
-  "resource": "/api/inventory/{id}",
-  "path": "/api/inventory/3",
+  "resource": "/inventory/{id}",
+  "path": "/inventory/3",
   "httpMethod": "GET",
   "pathParameters": {
     "id": "3"
   }
 }
+```
+
+### Deploying API Gateway
+
+Run the [setup-api-gateway.sh](./setup-api-gateway.sh) script with the appropriate arguments:
+
+1. <function-name>: The name of the Lambda function to create or update.
+
+Update the region with what you used to set the policy and role above.
+
+```bash
+AWS_REGION=<region-matching-role> ./setup-api-gateway.sh <function-name>
+```
+
+This will create an API gateway deployment with a `production` stage, and require an `x-api-key` in the request header.
+
+### Test
+
+Once deploy, gather the api key using the AWS console, and the URL from the API Gateway stage. 
+
+Use a curl command in the form:
+
+```bash
+curl -H "X-API-KEY: <API_KEY_VALUE>" -X GET "https://<STAGE_HASH>.execute-api.<AWS_REGION>.amazonaws.com/production/inventory/5"
 ```
