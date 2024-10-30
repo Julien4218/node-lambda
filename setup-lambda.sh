@@ -23,17 +23,44 @@ if [ -f deployment-package.zip ]; then
     rm deployment-package.zip
 fi
 
+# Package the lambda function
 echo "Creating deployment package..."
 zip -r deployment-package.zip . -x ".vscode/*" -x ".git/*" -x "setup*" -x "*test*" -x "node_modules/chai/*" -x "node_modules/mocha/*" -x "node_modules/supertest/*"
 echo "Deployment package created."
 
+# Check and remove any previous lambda function
 EXIST=$(aws lambda get-function --function-name $FUNCTION_NAME | grep "FunctionName" | grep $FUNCTION_NAME)
 if [ -n "$EXIST" ]; then
-    echo "Function $FUNCTION_NAME already exists. Deleting..."
-    aws lambda delete-function --function-name $FUNCTION_NAME --region $AWS_REGION
+    # Update the lambda function
+    echo "Function $FUNCTION_NAME already exists. Updating..."
+    aws lambda update-function-code --function-name $FUNCTION_NAME --region $AWS_REGION --zip-file fileb://deployment-package.zip
+else
+    # Create the lambda function
+    echo "Function $FUNCTION_NAME does not exist."
+    echo "Creating function $FUNCTION_NAME..."    
+    aws lambda create-function --function-name $FUNCTION_NAME --region $AWS_REGION \
+        --zip-file fileb://deployment-package.zip --handler lambda.handler \
+        --runtime nodejs20.x --role $ROLE_ARN
+    echo "Function $FUNCTION_NAME created."
 fi
-echo "Creating function $FUNCTION_NAME..."    
-aws lambda create-function --function-name $FUNCTION_NAME \
---zip-file fileb://deployment-package.zip --handler lambda.handler \
---runtime nodejs20.x --role $ROLE_ARN --region $AWS_REGION
-echo "Function $FUNCTION_NAME created."
+
+# Publish new version
+MAX_RETRIES=30
+RETRY_DELAY_SECONDS=10
+for ((i=1; i<=MAX_RETRIES; i++)); do
+    echo "Waiting $RETRY_DELAY_SECONDS seconds for the function to be created or updated before publishing..."
+    sleep $RETRY_DELAY_SECONDS
+    echo "Attempt $i to publish version..."
+    result=$(aws lambda publish-version --function-name $FUNCTION_NAME 2>&1)
+    if [[ $result == *"ResourceConflictException"* ]]; then
+        echo "Resource conflict detected. Retrying in $RETRY_DELAY_SECONDS seconds..."
+        sleep $RETRY_DELAY_SECONDS
+    else
+        echo "Version published successfully!"
+        break
+    fi
+    if [[ $i -eq $MAX_RETRIES ]]; then
+        echo "Max retries reached. Exiting with error."
+        exit 1
+    fi
+done
