@@ -23,6 +23,15 @@ if [ -z "$LAMBDA_FUNCTION_ROLE_ARN" ]; then
     echo "Lambda function $LAMBDA_FUNCTION_ROLE_ARN not found."
     exit 1
 fi
+
+# Get the latest version
+LAMBDA_FUNCTION_VERSION=$(aws lambda list-versions-by-function --function-name $LAMBDA_FUNCTION_NAME --query 'Versions[-1].Version' --output text)
+if [ -z "$LAMBDA_FUNCTION_VERSION" ] || [ "$LAMBDA_FUNCTION_VERSION" == "\$LATEST" ]; then
+    LAMBDA_FUNCTION_VERSION=""
+else
+    # Append the version to the lambda function ARN
+    LAMBDA_FUNCTION_ARN=$(echo "$LAMBDA_FUNCTION_ARN:$LAMBDA_FUNCTION_VERSION")
+fi
 echo "Lambda function $LAMBDA_FUNCTION_NAME found with ARN: $LAMBDA_FUNCTION_ARN and Role ARN: $LAMBDA_FUNCTION_ROLE_ARN"
 
 API_NAME="$LAMBDA_FUNCTION_NAME-Api"

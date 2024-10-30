@@ -73,7 +73,7 @@ Permissions:
         {
             "Effect": "Allow",
             "Action": "lambda:InvokeFunction",
-            "Resource": "arn:aws:lambda:<AWS_REGION>:<ACCOUNT_ID>:function:<FUNCTION_NAME>"
+            "Resource": "arn:aws:lambda:<AWS_REGION>:<ACCOUNT_ID>:function:<FUNCTION_NAME>:*"
         }
     ]
 }    
