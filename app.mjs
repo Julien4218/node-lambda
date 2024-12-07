@@ -21,6 +21,9 @@ app.get('/inventory', (req, res) => {
 
 app.get('/inventory/:id', (req, res) => {
     const itemId = req.params.id;
+    if (itemId % 2 === 0) {
+        res.status(500).send({ error: 'Internal Server Error for DEMO, id received is an even number' });
+    }
     const item = inventoryItems.find(i => i.id === itemId);
     if (item) {
         res.json(item);
