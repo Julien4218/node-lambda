@@ -15,6 +15,10 @@ const inventoryItems = [
     { id: "10", item: "Item_10", price: "$2.16", sku: "c4f7620640ab26dd704790341590a404330cd210", description: "Yard-a-Pult" }
 ];
 
+app.get('/status', (req, res) => {
+    res.send('OK');
+});
+
 app.get('/inventory', (req, res) => {
     res.json(inventoryItems);
 });
