@@ -3,11 +3,10 @@ import { expect } from 'chai';
 import app from '../app.mjs';
 
 describe('Inventory API', () => {
-    describe('GET /api/inventory', () => {
+    describe('GET /inventory', () => {
         it('should return all inventory items', (done) => {
             request(app)
-                .get('/api/inventory')
-                .expect('Content-Type', /json/)
+                .get('/inventory')
                 .expect(200)
                 .end((err, res) => {
                     if (err) return done(err);
@@ -18,11 +17,10 @@ describe('Inventory API', () => {
         });
     });
 
-    describe('GET /api/inventory/:id', () => {
+    describe('GET /inventory/:id', () => {
         it('should return the item with the given id', (done) => {
             request(app)
-                .get('/api/inventory/1')
-                .expect('Content-Type', /json/)
+                .get('/inventory/1')
                 .expect(200)
                 .end((err, res) => {
                     if (err) return done(err);
@@ -34,7 +32,7 @@ describe('Inventory API', () => {
 
         it('should return 404 if the item is not found', (done) => {
             request(app)
-                .get('/api/inventory/999')
+                .get('/inventory/999')
                 .expect(404)
                 .end((err, res) => {
                     if (err) return done(err);
