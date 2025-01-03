@@ -105,13 +105,15 @@ Resources:
 
             cat << EOF > /etc/systemd/system/node-service.service
             [Unit]
-            Description=Node Service
+            Description=Node.js Inventory Application
             After=network.target
 
             [Service]
-            ExecStart=/usr/sbin/httpd -DFOREGROUND
+            ExecStart=/usr/bin/node /home/ec2-user/node-service/local.mjs
             Restart=always
             User=ec2-user
+            Environment=PATH=/usr/bin:/usr/local/bin
+            WorkingDirectory=/home/ec2-user/node-service
 
             [Install]
             WantedBy=multi-user.target
@@ -160,7 +162,7 @@ Resources:
     Properties:
       CrossZone: true
       Listeners:
-        - LoadBalancerPort: '3000'
+        - LoadBalancerPort: '80'
           InstancePort: '3000'
           Protocol: 'HTTP'
       HealthCheck:
@@ -172,6 +174,8 @@ Resources:
       SecurityGroups:
         - !Ref LoadBalancerSecurityGroup
       Subnets: !Split [",", !Ref SubnetIds]
+      Instances:
+        - !Ref EC2Instance
 
   LoadBalancerSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
