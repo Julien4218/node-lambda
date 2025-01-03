@@ -109,7 +109,7 @@ Resources:
             After=network.target
 
             [Service]
-            ExecStart=/usr/bin/node /home/ec2-user/node-service/local.mjs
+            ExecStart=/usr/bin/npm start
             Restart=always
             User=ec2-user
             Environment=PATH=/usr/bin:/usr/local/bin

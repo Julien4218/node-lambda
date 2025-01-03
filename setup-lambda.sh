@@ -25,7 +25,7 @@ fi
 
 # Package the lambda function
 echo "Creating deployment package..."
-zip -r deployment-package.zip . -x ".vscode/*" -x ".git/*" -x "setup*" -x "*test*" -x "node_modules/chai/*" -x "node_modules/mocha/*" -x "node_modules/supertest/*"
+zip -r deployment-package.zip . -x ".vscode/*" -x ".git/*" -x "setup*" -x "*test*" -x "node_modules/chai/*" -x "node_modules/mocha/*" -x "node_modules/supertest/*" -x "node_modules/@newrelic/*" -x "node_modules/newrelic/*" -x "node_modules/superagent/*" -x "node_modules/aws-sdk/*" -x "deployment-package.zip"
 echo "Deployment package created."
 
 # Check and remove any previous lambda function
