@@ -1,0 +1,173 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to provision an EC2 instance with a Node.js application deployed from GitHub and an ELB to route traffic
+
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: String
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t4g.nano
+    AllowedValues:
+      - t4g.nano
+      - t4g.micro
+      - t4g.small
+    ConstraintDescription: Must be a valid Graviton instance type.
+
+  VpcIc:
+    Description: The ID of the default VPC
+    Type: AWS::EC2::VPC::Id
+
+  SubnetIds:
+    Description: The subnets in the default VPC
+    Type: String
+
+  AmiId:
+    Description: The ID of the AMI to use for the EC2 instance
+    Type: String
+
+  NewRelicLicenseKeyPath:
+    Description: The New Relic license key stored in Parameter Store
+    Type: String
+    Default: /newrelic/license-key
+
+  NewRelicAppName:
+    Description: The application name when reporting to New Relic
+    Type: String
+    Default: node-service
+
+Resources:
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      ImageId: !Ref AmiId
+      IamInstanceProfile: !Ref Ec2NodeInstanceProfile
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      SubnetId: !Select [0, !Split [",", !Ref SubnetIds]]
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash
+            yum update -y
+
+            curl -sL https://rpm.nodesource.com/setup_14.x | bash -
+
+            yum install -y nodejs git httpd jq
+
+            cd /home/ec2-user
+            git clone https://github.com/Julien4218/node-lambda.git node-service
+            cd node-service
+            npm install
+
+            AWS_REGION=$(curl --silent http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
+            NEW_RELIC_LICENSE_KEY=$(aws ssm get-parameter --name ${NewRelicLicenseKeyPath} --with-decryption --query Parameter.Value --output text --region $AWS_REGION)
+            NEW_RELIC_APP_NAME=${NewRelicAppName}
+
+            cat << EOF > /etc/systemd/system/node-service.service
+            [Unit]
+            Description=Node.js Inventory Application
+            After=network.target
+
+            [Service]
+            ExecStart=/usr/bin/npm start
+            Restart=always
+            User=ec2-user
+            Environment=PATH=/usr/bin:/usr/local/bin
+            Environment=NEW_RELIC_LICENSE_KEY=$NEW_RELIC_LICENSE_KEY NEW_RELIC_APP_NAME=$NEW_RELIC_APP_NAME
+            WorkingDirectory=/home/ec2-user/node-service
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+
+            systemctl daemon-reload
+            systemctl enable node-service.service
+            systemctl start node-service.service
+
+  InstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH and HTTP access
+      VpcId: !Ref VpcIc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
+
+  Ec2NodeInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Roles:
+        - !Ref EC2Role
+
+  EC2Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: SSMParameterAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${NewRelicLicenseKeyPath}
+
+  LoadBalancer:
+    Type: 'AWS::ElasticLoadBalancing::LoadBalancer'
+    Properties:
+      CrossZone: true
+      Listeners:
+        - LoadBalancerPort: '80'
+          InstancePort: '3000'
+          Protocol: 'HTTP'
+      HealthCheck:
+        Target: 'HTTP:3000/status'
+        HealthyThreshold: '3'
+        UnhealthyThreshold: '5'
+        Interval: '30'
+        Timeout: '5'
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Subnets: !Split [",", !Ref SubnetIds]
+      Instances:
+        - !Ref EC2Instance
+
+  LoadBalancerSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable HTTP access to the load balancer
+      VpcId: !Ref VpcIc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
+
+Outputs:
+  InstanceId:
+    Description: Instance ID of the newly created EC2 instance
+    Value: !Ref EC2Instance
+
+  LoadBalancerDNSName:
+    Description: DNS name of the load balancer
+    Value: !GetAtt LoadBalancer.DNSName

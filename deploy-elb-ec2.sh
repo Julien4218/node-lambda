@@ -43,169 +43,38 @@ fi
 echo "Using Subnet IDs:$SUBNET_IDS"
 
 # Create a temporary file for the CloudFormation template with a unique name
-TEMPLATE_FILE=$(mktemp /tmp/template.${STACK_NAME}.XXXXXXXX.yaml)
+TEMPLATE_FILE="./deploy-elb-ec2-cf.yaml"
+if [ ! -f "$TEMPLATE_FILE" ]; then
+  echo "Error: CloudFormation template file $TEMPLATE_FILE does not exist."
+  exit 6
+fi
 
-# Inline CloudFormation template (YAML format)
-cat > $TEMPLATE_FILE << EOF
-AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template to provision an EC2 instance with a Node.js application deployed from GitHub and an ELB to route traffic
+NEW_RELIC_LICENSE_KEY_PATH="/newrelic/node-lambda/license_key"
+if [ -n "$NEW_RELIC_LICENSE_KEY" ]; then
+  echo "Storing New Relic license key in Parameter Store..."
+  aws ssm put-parameter \
+    --name "$NEW_RELIC_LICENSE_KEY_PATH" \
+    --value "$NEW_RELIC_LICENSE_KEY" \
+    --type "SecureString" \
+    --overwrite
+  if [ $? -eq 0 ]; then
+    echo "New Relic license key stored successfully."
+  else
+    echo "Failed to store New Relic license key."
+    exit 7
+  fi
+else
+  echo "NEW_RELIC_LICENSE_KEY environment variable is not set, skipping."
+fi
 
-Parameters:
-  KeyName:
-    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
-    Type: String
-
-  InstanceType:
-    Description: EC2 instance type
-    Type: String
-    Default: t4g.nano
-    AllowedValues:
-      - t4g.nano
-      - t4g.micro
-      - t4g.small
-    ConstraintDescription: Must be a valid Graviton instance type.
-
-  VpcIc:
-    Description: The ID of the default VPC
-    Type: AWS::EC2::VPC::Id
-
-  SubnetIds:
-    Description: The subnets in the default VPC
-    Type: String
-
-  AmiId:
-    Description: The ID of the AMI to use for the EC2 instance
-    Type: String
-
-Resources:
-  EC2Instance:
-    Type: 'AWS::EC2::Instance'
-    Properties:
-      InstanceType: !Ref InstanceType
-      KeyName: !Ref KeyName
-      ImageId: !Ref AmiId
-      IamInstanceProfile: !Ref Ec2NodeInstanceProfile
-      SecurityGroupIds:
-        - !Ref InstanceSecurityGroup
-      SubnetId: !Select [0, !Split [",", !Ref SubnetIds]]
-      UserData:
-        Fn::Base64:
-          !Sub |
-            #!/bin/bash
-            yum update -y
-
-            curl -sL https://rpm.nodesource.com/setup_14.x | bash -
-
-            yum install -y nodejs git httpd
-
-            cd /home/ec2-user
-            git clone https://github.com/Julien4218/node-lambda.git node-service
-            cd node-service
-            npm install
-
-            cat << EOF > /etc/systemd/system/node-service.service
-            [Unit]
-            Description=Node.js Inventory Application
-            After=network.target
-
-            [Service]
-            ExecStart=/usr/bin/npm start
-            Restart=always
-            User=ec2-user
-            Environment=PATH=/usr/bin:/usr/local/bin
-            WorkingDirectory=/home/ec2-user/node-service
-
-            [Install]
-            WantedBy=multi-user.target
-            EOF
-
-            systemctl daemon-reload
-            systemctl enable node-service.service
-            systemctl start node-service.service
-
-  InstanceSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      GroupDescription: Enable SSH and HTTP access
-      VpcId: !Ref VpcIc
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 3000
-          ToPort: 3000
-          CidrIp: 0.0.0.0/0
-
-  Ec2NodeInstanceProfile:
-    Type: 'AWS::IAM::InstanceProfile'
-    Properties:
-      Roles:
-        - !Ref EC2Role
-
-  EC2Role:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com
-            Action:
-              - sts:AssumeRole
-
-  LoadBalancer:
-    Type: 'AWS::ElasticLoadBalancing::LoadBalancer'
-    Properties:
-      CrossZone: true
-      Listeners:
-        - LoadBalancerPort: '80'
-          InstancePort: '3000'
-          Protocol: 'HTTP'
-      HealthCheck:
-        Target: 'HTTP:3000/status'
-        HealthyThreshold: '3'
-        UnhealthyThreshold: '5'
-        Interval: '30'
-        Timeout: '5'
-      SecurityGroups:
-        - !Ref LoadBalancerSecurityGroup
-      Subnets: !Split [",", !Ref SubnetIds]
-      Instances:
-        - !Ref EC2Instance
-
-  LoadBalancerSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      GroupDescription: Enable HTTP access to the load balancer
-      VpcId: !Ref VpcIc
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 3000
-          CidrIp: 0.0.0.0/0
-
-Outputs:
-  InstanceId:
-    Description: Instance ID of the newly created EC2 instance
-    Value: !Ref EC2Instance
-
-  LoadBalancerDNSName:
-    Description: DNS name of the load balancer
-    Value: !GetAtt LoadBalancer.DNSName
-EOF
-echo "CloudFormation template created: $TEMPLATE_FILE"
-
+echo "Deploying CloudFormation stack $STACK_NAME with template $TEMPLATE_FILE..."
 # Deploy the CloudFormation stack with inline template
 aws cloudformation deploy \
   --stack-name $STACK_NAME \
   --template-file $TEMPLATE_FILE \
   --region $AWS_REGION \
   --capabilities CAPABILITY_IAM \
-  --parameter-overrides KeyName=$EC2_KEYNAME InstanceType=$EC2_INSTANCE_TYPE VpcIc=$VPC_ID SubnetIds=$SUBNET_IDS AmiId=$AMI_ID
+  --parameter-overrides KeyName=$EC2_KEYNAME InstanceType=$EC2_INSTANCE_TYPE VpcIc=$VPC_ID SubnetIds=$SUBNET_IDS AmiId=$AMI_ID NewRelicLicenseKeyPath=$NEW_RELIC_LICENSE_KEY_PATH NewRelicAppName=$STACK_NAME
 
 # Check the status of the stack deployment
 if [ $? -eq 0 ]; then
@@ -224,5 +93,3 @@ if [ $? -eq 0 ]; then
 else
   echo "Stack deployment initiation failed."
 fi
-
-rm $TEMPLATE_FILE
