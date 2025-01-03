@@ -28,7 +28,7 @@ if [ -z "$AMI_ID" ]; then
 fi
 echo "Using AMI ID:$AMI_ID on region:$AWS_REGION"
 
-VPC_ID=$(AWS_REGION=us-west-2 aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query "Vpcs[0].VpcId" --output text)
+VPC_ID=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query "Vpcs[0].VpcId" --output text)
 if [ -z "$VPC_ID" ]; then
   echo "Error: Unable to find the default VPC."
   exit 4
