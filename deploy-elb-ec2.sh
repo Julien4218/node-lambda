@@ -83,7 +83,7 @@ if [ $? -eq 0 ]; then
   # Wait for stack creation to complete
   aws cloudformation wait stack-create-complete \
     --stack-name $STACK_NAME \
-    --region $REGION
+    --region $AWS_REGION
 
   if [ $? -eq 0 ]; then
     echo "Stack deployment completed successfully!"
