@@ -2,7 +2,7 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "CloudFormation template to provision an EC2 instance with a Node.js application deployed from GitHub and an ELB to route traffic",
   "Parameters": {
-    "KeyName": {
+    "KeyPairName": {
       "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
       "Type": "String"
     },
@@ -47,8 +47,8 @@
         "InstanceType": {
           "Ref": "InstanceType"
         },
-        "KeyName": {
-          "Ref": "KeyName"
+        "KeyPairName": {
+          "Ref": "KeyPairName"
         },
         "ImageId": {
           "Ref": "AmiId"
