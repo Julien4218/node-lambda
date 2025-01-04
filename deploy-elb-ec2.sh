@@ -21,7 +21,7 @@ EC2_INSTANCE_TYPE=$2
 # Variables
 STACK_NAME="deploy-elb-ec2-$(openssl rand -hex 6)"
 
-AMI_ID=$(aws ec2 describe-images --owners amazon --filters "Name=name,Values=amzn2-ami-hvm-2.0.????????.?-arm64-gp2" --query 'Images[*].[ImageId,CreationDate]' --output text | sort -k2 -r | head -n 1 | awk '{print $1}')
+AMI_ID=$(aws ec2 describe-images --owners amazon --filters "Name=name,Values=al2023-ami-2023.?.????????.?-kernel-6.1-arm64" --query 'Images[*].[ImageId,CreationDate]' --output text | sort -k2 -r | head -n 1 | awk '{print $1}')
 if [ -z "$AMI_ID" ]; then
   echo "Error: Unable to find the latest Amazon Linux 2 AMI."
   exit 3
