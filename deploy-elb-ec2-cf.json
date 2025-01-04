@@ -47,7 +47,7 @@
         "InstanceType": {
           "Ref": "InstanceType"
         },
-        "KeyPairName": {
+        "KeyName": {
           "Ref": "KeyPairName"
         },
         "ImageId": {
