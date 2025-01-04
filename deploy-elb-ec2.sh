@@ -43,7 +43,7 @@ fi
 echo "Using Subnet IDs:$SUBNET_IDS"
 
 # Create a temporary file for the CloudFormation template with a unique name
-TEMPLATE_FILE="./deploy-elb-ec2-cf.yaml"
+TEMPLATE_FILE="./deploy-elb-ec2-cf.json"
 if [ ! -f "$TEMPLATE_FILE" ]; then
   echo "Error: CloudFormation template file $TEMPLATE_FILE does not exist."
   exit 6
