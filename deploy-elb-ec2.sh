@@ -74,7 +74,7 @@ aws cloudformation deploy \
   --template-file $TEMPLATE_FILE \
   --region $AWS_REGION \
   --capabilities CAPABILITY_IAM \
-  --parameter-overrides KeyName=$EC2_KEYNAME InstanceType=$EC2_INSTANCE_TYPE VpcIc=$VPC_ID SubnetIds=$SUBNET_IDS AmiId=$AMI_ID NewRelicLicenseKeyPath=$NEW_RELIC_LICENSE_KEY_PATH NewRelicAppName=$STACK_NAME
+  --parameter-overrides KeyName=$EC2_KEYNAME InstanceType=$EC2_INSTANCE_TYPE VpcId=$VPC_ID SubnetIds=$SUBNET_IDS AmiId=$AMI_ID NewRelicLicenseKeyPath=$NEW_RELIC_LICENSE_KEY_PATH NewRelicAppName=$STACK_NAME
 
 # Check the status of the stack deployment
 if [ $? -eq 0 ]; then

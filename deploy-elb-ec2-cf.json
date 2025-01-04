@@ -17,7 +17,7 @@
       ],
       "ConstraintDescription": "Must be a valid Graviton instance type."
     },
-    "VpcIc": {
+    "VpcId": {
       "Description": "The ID of the default VPC",
       "Type": "AWS::EC2::VPC::Id"
     },
@@ -86,7 +86,7 @@
       "Properties": {
         "GroupDescription": "Enable SSH and HTTP access",
         "VpcId": {
-          "Ref": "VpcIc"
+          "Ref": "VpcId"
         },
         "SecurityGroupIngress": [
           {
@@ -197,7 +197,7 @@
       "Properties": {
         "GroupDescription": "Enable HTTP access to the load balancer",
         "VpcId": {
-          "Ref": "VpcIc"
+          "Ref": "VpcId"
         },
         "SecurityGroupIngress": [
           {
