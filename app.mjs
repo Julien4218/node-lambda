@@ -25,22 +25,31 @@ app.get('/inventory', (req, res) => {
 
 app.get('/inventory/:id', (req, res) => {
     const itemId = req.params.id;
+    // getFaultyItemById(itemId, res);
+    getItemById(itemId, res);
+});
+
+const getFaultyItemById = (itemId, res) => {
     if (itemId % 2 === 0) {
-        var message = 'Internal Server Error for DEMO, id received is an even number';
+        const message = 'Internal Server Error for DEMO, id received is an even number';
         console.error(message);
         res.status(500).send({ error: message });
         return;
     }
+    getItemById(itemId, res);
+};
+
+const getItemById = (itemId, res) => {
     const item = inventoryItems.find(i => i.id === itemId);
     if (item) {
-        var message = `Item with id ${itemId} found`;
+        const message = `Item with id ${itemId} found`;
         console.log(message);
         res.json(item);
-    } else {
-        var message = `Item with id ${itemId} not found`;
-        console.error(message);
-        res.status(404).send({ error: message });
+        return;
     }
-});
+    const message = `Item with id ${itemId} not found`;
+    console.error(message);
+    res.status(404).send({ error: message });
+};
 
 export default app;
