@@ -25,6 +25,9 @@ app.get('/inventory', (req, res) => {
 
 app.get('/inventory/:id', (req, res) => {
     const itemId = req.params.id;
+    if (req.headers['x-compute'] === 'true') {
+        processCpu(1000*itemId);
+    }
     // getFaultyItemById(itemId, res);
     getItemById(itemId, res);
 });
@@ -51,5 +54,19 @@ const getItemById = (itemId, res) => {
     console.error(message);
     res.status(404).send({ error: message });
 };
+
+const processCpu = (duration) => {
+    console.log(`Processing CPU for ${duration}ms`);
+    const startTime = new Date().getTime()
+    var now = new Date().getTime()
+    while((now - startTime) < duration) {
+        for (let i = 0; i < 50; i++) {
+            for (let j = 0; j < i * 50; j++) {
+                now / Math.pow(Math.PI, Math.ceil(Math.random() * 10))
+            }
+        }
+        now = new Date().getTime()
+    }
+}
 
 export default app;
